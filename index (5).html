@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberCV - 极客智能简历生成器</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            dark: '#050a15',
+                            darker: '#02050a',
+                            neon: '#00f3ff',
+                            pink: '#ff00ea',
+                            green: '#00ff66'
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['"Fira Code"', '"Courier New"', 'monospace'],
+                        sans: ['"Inter"', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <!-- Mammoth.js for DOCX -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
+
+    <style>
+        /* 主题变量 */
+        :root {
+            --bg-primary: #02050a;
+            --bg-secondary: #050a15;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --border-color: rgba(0, 243, 255, 0.3);
+            --accent-color: #00f3ff;
+            --accent-pink: #ff00ea;
+            --shadow-color: rgba(0, 243, 255, 0.1);
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: rgba(59, 130, 246, 0.3);
+            --accent-color: #3b82f6;
+            --accent-pink: #ec4899;
+            --shadow-color: rgba(59, 130, 246, 0.1);
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Fira Code', monospace;
+            background-image: 
+                linear-gradient(var(--border-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border-color) 1px, transparent 1px);
+            background-size: 30px 30px;
+            overflow-x: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .cyber-panel {
+            background: rgba(5, 10, 21, 0.8);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 0 15px var(--shadow-color), inset 0 0 20px rgba(0, 243, 255, 0.05);
+            backdrop-filter: blur(10px);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        [data-theme="light"] .cyber-panel {
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .cyber-panel::before {
+            content: '';
+            position: absolute;
+            top: -1px;
+            left: -1px;
+            width: 10px;
+            height: 10px;
+            border-top: 2px solid var(--accent-color);
+            border-left: 2px solid var(--accent-color);
+        }
+
+        .cyber-panel::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            right: -1px;
+            width: 10px;
+            height: 10px;
+            border-bottom: 2px solid var(--accent-color);
+            border-right: 2px solid var(--accent-color);
+        }
+
+        .cyber-input {
+            background: rgba(0, 243, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        [data-theme="light"] .cyber-input {
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .cyber-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 10px var(--shadow-color);
+            background: rgba(0, 243, 255, 0.1);
+        }
+
+        [data-theme="light"] .cyber-input:focus {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .cyber-button {
+            background: transparent;
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
+            text-transform: uppercase;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            text-shadow: 0 0 5px var(--accent-color);
+            cursor: pointer;
+        }
+
+        .cyber-button:hover {
+            background: rgba(0, 243, 255, 0.1);
+            box-shadow: 0 0 15px var(--shadow-color);
+            transform: translateY(-2px);
+        }
+
+        [data-theme="light"] .cyber-button:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .cyber-button.primary {
+            background: rgba(0, 243, 255, 0.1);
+            border: 1px solid var(--accent-color);
+            box-shadow: 0 0 10px var(--shadow-color);
+        }
+
+        [data-theme="light"] .cyber-button.primary {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border-color);
+            transition: all 0.3s;
+        }
+
+        .upload-area.dragover {
+            border-color: var(--accent-color);
+            background: rgba(0, 243, 255, 0.1);
+            transform: scale(1.02);
+        }
+
+        [data-theme="light"] .upload-area.dragover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        #loading, #edit-data-section, #preview-section {
+            display: none;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-color);
+        }
+
+        .smooth-transition {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .theme-toggle {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            transform: rotate(180deg);
+        }
+
+        .glow-text {
+            text-shadow: 0 0 10px var(--accent-color);
+        }
+
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px var(--shadow-color);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-6 md:py-10 px-4 md:px-10" data-theme="dark">
+
+    <header class="w-full max-w-6xl flex justify-between items-center mb-10 smooth-transition">
+        <div class="flex items-center space-x-3">
+            <i class="fa-solid fa-microchip text-3xl" style="color: var(--accent-color)"></i>
+            <div>
+                <h1 class="text-3xl font-bold glow-text uppercase tracking-widest">CyberCV<span style="color: var(--accent-pink)">.</span>Builder</h1>
+                <p class="text-xs" style="color: var(--text-secondary)">[ SYS.INITIALIZED // WAITING FOR UPLOAD ]</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <div class="hidden md:flex space-x-4 text-right text-xs">
+                <div style="color: var(--accent-color); border-right: 1px solid var(--accent-color); padding-right: 1rem;">
+                    <p>STATUS: <span style="color: #00ff66">ONLINE</span></p>
+                    <p>CORE: ACTIVE</p>
+                </div>
+                <div style="color: var(--accent-pink)">
+                    <p>V. 2.0.45</p>
+                    <p>STABLE_BUILD</p>
+                </div>
+            </div>
+            <button id="theme-toggle" class="cyber-button p-2 rounded-full theme-toggle">
+                <i class="fa-solid fa-moon"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="w-full max-w-6xl flex-grow flex flex-col gap-6">
+
+        <!-- STEP 1: Upload -->
+        <section id="upload-section" class="cyber-panel p-8 md:p-16 text-center w-full smooth-transition flex items-center justify-center min-h-[60vh]">
+            <div id="drop-zone" class="upload-area p-12 md:p-16 rounded-lg cursor-pointer relative overflow-hidden max-w-2xl w-full">
+                <div class="relative inline-block mb-8">
+                    <div class="absolute -inset-4 bg-gradient-to-r from-cyber-neon to-cyber-pink rounded-full blur-lg opacity-30 animate-pulse"></div>
+                    <i class="fa-solid fa-cloud-arrow-up text-6xl md:text-7xl mb-6 relative z-10" style="color: var(--accent-color)"></i>
+                </div>
+                <h2 class="text-2xl md:text-3xl mb-4 font-bold glow-text">拖拽简历文件至此区域</h2>
+                <p class="text-sm md:text-base mb-8 max-w-md mx-auto" style="color: var(--text-secondary)">支持 PDF / DOCX / TXT 格式。智能解析，一键生成专业作品集。</p>
+                <input type="file" id="file-input" class="hidden" accept=".pdf,.docx,.txt" />
+                <div class="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+                    <button id="select-file-btn" class="cyber-button primary px-8 py-4 font-bold tracking-wider text-sm md:text-base rounded-lg flex items-center justify-center gap-2 min-w-[180px]">
+                        <i class="fa-solid fa-folder-open"></i>
+                        选择文件
+                    </button>
+                </div>
+                <div class="grid grid-cols-3 gap-6 max-w-md mx-auto">
+                    <div class="cyber-panel p-5 rounded-lg text-center card-hover">
+                        <i class="fa-solid fa-file-pdf text-red-500 text-3xl mb-3"></i>
+                        <p class="text-sm font-medium">PDF</p>
+                    </div>
+                    <div class="cyber-panel p-5 rounded-lg text-center card-hover">
+                        <i class="fa-solid fa-file-word text-blue-500 text-3xl mb-3"></i>
+                        <p class="text-sm font-medium">DOCX</p>
+                    </div>
+                    <div class="cyber-panel p-5 rounded-lg text-center card-hover">
+                        <i class="fa-solid fa-file-lines text-gray-400 text-3xl mb-3"></i>
+                        <p class="text-sm font-medium">TXT</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loading -->
+        <section id="loading" class="w-full text-center py-20 flex-col items-center justify-center">
+            <div class="relative w-24 h-24 mx-auto mb-6">
+                <div class="absolute inset-0 border-4 border-t-transparent rounded-full animate-spin" style="border-color: var(--accent-color); border-top-color: transparent;"></div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <i class="fa-solid fa-cog fa-spin text-3xl" style="color: var(--accent-color)"></i>
+                </div>
+            </div>
+            <h3 class="tracking-widest text-lg animate-pulse" style="color: var(--accent-color)">DECODING FILE DATA...</h3>
+            <div class="w-64 h-2 rounded-full overflow-hidden mx-auto mt-4" style="background-color: var(--bg-secondary)">
+                <div class="h-full animate-pulse" style="background: linear-gradient(90deg, var(--accent-color), var(--accent-pink)); width: 70%"></div>
+            </div>
+            <p class="text-xs mt-4" style="color: var(--text-secondary)">正在分析您的简历内容，请稍候...</p>
+        </section>
+
+        <!-- STEP 2: Edit -->
+        <section id="edit-data-section" class="w-full flex-col gap-6 smooth-transition">
+            <div class="cyber-panel p-6 md:p-8 w-full">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl md:text-2xl font-bold border-b pb-3" style="color: var(--accent-color); border-color: var(--border-color)">
+                        <i class="fa-solid fa-database mr-2"></i>
+                        数据解析完成 // 请核对信息
+                    </h3>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2" style="color: var(--accent-pink)">
+                                <i class="fa-solid fa-user mr-2"></i>NAME [姓名]
+                            </label>
+                            <input type="text" id="inp-name" class="cyber-input w-full p-3 text-sm rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2" style="color: var(--accent-pink)">
+                                <i class="fa-solid fa-briefcase mr-2"></i>TITLE [职位]
+                            </label>
+                            <input type="text" id="inp-title" class="cyber-input w-full p-3 text-sm rounded-lg">
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2" style="color: var(--accent-pink)">
+                                    <i class="fa-solid fa-phone mr-2"></i>PHONE
+                                </label>
+                                <input type="text" id="inp-phone" class="cyber-input w-full p-3 text-sm rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2" style="color: var(--accent-pink)">
+                                    <i class="fa-solid fa-envelope mr-2"></i>EMAIL
+                                </label>
+                                <input type="text" id="inp-email" class="cyber-input w-full p-3 text-sm rounded-lg">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2" style="color: var(--accent-pink)">
+                                <i class="fa-solid fa-quote-left mr-2"></i>BIO [简介]
+                            </label>
+                            <textarea id="inp-bio" class="cyber-input w-full p-3 text-sm h-24 resize-none rounded-lg"></textarea>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2" style="color: var(--accent-pink)">
+                                <i class="fa-solid fa-code mr-2"></i>SKILLS [技能栈]
+                                <span class="text-xs ml-2" style="color: var(--text-secondary)">用逗号或换行分隔</span>
+                            </label>
+                            <textarea id="inp-skills" class="cyber-input w-full p-3 text-sm h-24 resize-none rounded-lg"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2" style="color: var(--accent-pink)">
+                                <i class="fa-solid fa-project-diagram mr-2"></i>EXPERIENCE [经历]
+                            </label>
+                            <textarea id="inp-projects" class="cyber-input w-full p-3 text-sm h-36 resize-none rounded-lg"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-8 flex flex-col sm:flex-row justify-end gap-4">
+                    <button id="reset-btn" class="cyber-button px-6 py-3 text-sm rounded-lg flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-upload"></i>
+                        重新上传
+                    </button>
+                    <button id="generate-btn" class="cyber-button primary px-6 py-3 text-sm font-bold rounded-lg flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-magic"></i>
+                        生成预览
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 3: Preview -->
+        <section id="preview-section" class="w-full flex-col gap-6 smooth-transition">
+            <div class="cyber-panel p-4 md:p-6 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-eye text-2xl" style="color: var(--accent-color)"></i>
+                    <div>
+                        <h3 class="text-lg font-bold" style="color: var(--accent-color)">PREVIEW_MODE</h3>
+                        <p class="text-xs" style="color: var(--text-secondary)">实时预览您的作品集网站</p>
+                    </div>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                    <button id="copy-btn" class="cyber-button flex-1 sm:flex-none px-6 py-3 text-sm rounded-lg flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-copy"></i>
+                        复制代码
+                    </button>
+                    <button id="download-btn" class="cyber-button primary flex-1 sm:flex-none px-6 py-3 text-sm font-bold rounded-lg flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-download"></i>
+                        下载 HTML
+                    </button>
+                </div>
+            </div>
+            <div class="cyber-panel p-2 w-full h-[600px]">
+                <div class="w-full h-full border rounded-lg overflow-hidden" style="border-color: var(--border-color)">
+                    <iframe id="preview-frame" class="w-full h-full bg-black border-none"></iframe>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="mt-16 text-center pb-8">
+        <p class="text-sm" style="color: var(--text-secondary)">© 2026 CyberCV - 极客智能简历生成器</p>
+    </footer>
+
+    <div id="toast" class="fixed bottom-10 right-10 cyber-panel px-6 py-3 text-sm transform translate-x-full opacity-0 transition-all duration-300 pointer-events-none z-50">
+        <span id="toast-msg"></span>
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+        let parsedData = { name: '', title: '', phone: '', email: '', bio: '', skills: '', projects: '' };
+        let finalHtmlCode = '';
+        let currentTheme = 'dark';
+
+        const fileInput = document.getElementById('file-input');
+        const sections = {
+            upload: document.getElementById('upload-section'),
+            loading: document.getElementById('loading'),
+            edit: document.getElementById('edit-data-section'),
+            preview: document.getElementById('preview-section')
+        };
+        const inputs = {
+            name: document.getElementById('inp-name'),
+            title: document.getElementById('inp-title'),
+            phone: document.getElementById('inp-phone'),
+            email: document.getElementById('inp-email'),
+            bio: document.getElementById('inp-bio'),
+            skills: document.getElementById('inp-skills'),
+            projects: document.getElementById('inp-projects')
+        };
+
+        // 主题切换功能
+        function toggleTheme() {
+            const body = document.body;
+            currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            body.setAttribute('data-theme', currentTheme);
+            
+            const themeToggle = document.getElementById('theme-toggle');
+            if (themeToggle) {
+                const icon = themeToggle.querySelector('i');
+                if (icon) {
+                    if (currentTheme === 'dark') {
+                        icon.className = 'fa-solid fa-moon';
+                    } else {
+                        icon.className = 'fa-solid fa-sun';
+                    }
+                }
+            }
+        }
+
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', toggleTheme);
+        }
+
+        function switchView(viewName) {
+            Object.values(sections).forEach(function(el) {
+                el.style.display = 'none';
+            });
+            if (sections[viewName]) {
+                sections[viewName].style.display = 'flex';
+            }
+        }
+
+        function resetApp() {
+            fileInput.value = '';
+            switchView('upload');
+        }
+
+        // 选择文件按钮
+        const selectFileBtn = document.getElementById('select-file-btn');
+        if (selectFileBtn) {
+            selectFileBtn.addEventListener('click', function() {
+                fileInput.click();
+            });
+        }
+
+        // 拖拽功能
+        const dropZone = document.getElementById('drop-zone');
+        if (dropZone) {
+            dropZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+            
+            dropZone.addEventListener('dragleave', function() {
+                dropZone.classList.remove('dragover');
+            });
+            
+            dropZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) {
+                    fileInput.files = e.dataTransfer.files;
+                    fileInput.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+
+        // 文件上传处理
+        fileInput.addEventListener('change', async function(e) {
+            if (!e.target.files.length) return;
+            const file = e.target.files[0];
+            switchView('loading');
+            try {
+                let text = '';
+                const ext = file.name.split('.').pop().toLowerCase();
+                if (ext === 'txt') {
+                    text = await file.text();
+                } else if (ext === 'pdf') {
+                    text = await readPdf(file);
+                } else if (ext === 'docx') {
+                    text = await readDocx(file);
+                }
+                
+                // 改进的解析逻辑
+                parsedData = extractResumeData(text);
+
+                Object.keys(inputs).forEach(function(k) {
+                    if (inputs[k]) {
+                        inputs[k].value = parsedData[k] || '';
+                    }
+                });
+                setTimeout(function() {
+                    switchView('edit');
+                }, 800);
+            } catch (err) {
+                showToast('解析失败');
+                switchView('upload');
+            }
+        });
+
+        // 提取简历数据的函数
+        function extractResumeData(text) {
+            const data = {
+                name: '',
+                title: '',
+                phone: '',
+                email: '',
+                bio: '',
+                skills: '',
+                projects: ''
+            };
+
+            // 提取邮箱
+            const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+            if (emailMatch) {
+                data.email = emailMatch[0];
+            }
+
+            // 提取电话
+            const phoneMatch = text.match(/1[3-9]\d{9}/);
+            if (phoneMatch) {
+                data.phone = phoneMatch[0];
+            }
+
+            // 提取姓名（尝试多种方式）
+            const nameLines = text.split('\n').filter(line => line.trim().length > 0);
+            if (nameLines.length > 0) {
+                // 尝试提取第一行作为姓名
+                data.name = nameLines[0].trim();
+                
+                // 尝试从第二行提取职位
+                if (nameLines.length > 1) {
+                    data.title = nameLines[1].trim();
+                }
+            }
+
+            // 提取简介
+            const bioKeywords = ['简介', '个人介绍', '自我评价', 'summary', 'bio', 'introduction'];
+            for (let i = 0; i < nameLines.length; i++) {
+                const line = nameLines[i].toLowerCase();
+                if (bioKeywords.some(keyword => line.includes(keyword))) {
+                    // 提取简介内容
+                    let bioContent = '';
+                    for (let j = i + 1; j < Math.min(i + 5, nameLines.length); j++) {
+                        if (nameLines[j].trim().length > 0) {
+                            bioContent += nameLines[j].trim() + ' ';
+                        } else {
+                            break;
+                        }
+                    }
+                    if (bioContent) {
+                        data.bio = bioContent.trim();
+                    }
+                    break;
+                }
+            }
+
+            // 提取技能
+            const skillsKeywords = ['技能', '技术栈', 'skills', 'technologies', 'tech stack'];
+            for (let i = 0; i < nameLines.length; i++) {
+                const line = nameLines[i].toLowerCase();
+                if (skillsKeywords.some(keyword => line.includes(keyword))) {
+                    // 提取技能内容
+                    let skillsContent = '';
+                    for (let j = i + 1; j < Math.min(i + 3, nameLines.length); j++) {
+                        if (nameLines[j].trim().length > 0) {
+                            skillsContent += nameLines[j].trim() + ', ';
+                        } else {
+                            break;
+                        }
+                    }
+                    if (skillsContent) {
+                        data.skills = skillsContent.trim().replace(/,$/, '');
+                    }
+                    break;
+                }
+            }
+
+            // 提取项目/经历
+            const projectKeywords = ['项目', '经历', 'experience', 'projects', 'work experience'];
+            const projectLines = [];
+            let inProjectSection = false;
+            
+            for (let i = 0; i < nameLines.length; i++) {
+                const line = nameLines[i].toLowerCase();
+                if (projectKeywords.some(keyword => line.includes(keyword))) {
+                    inProjectSection = true;
+                    continue;
+                }
+                
+                if (inProjectSection) {
+                    // 检查是否到达下一个部分
+                    const nextSectionKeywords = ['教育', 'education', '技能', 'skills', '联系方式', 'contact'];
+                    if (nextSectionKeywords.some(keyword => line.includes(keyword))) {
+                        break;
+                    }
+                    
+                    if (nameLines[i].trim().length > 0) {
+                        projectLines.push('- ' + nameLines[i].trim());
+                    }
+                }
+            }
+            
+            if (projectLines.length > 0) {
+                data.projects = projectLines.join('\n');
+            }
+
+            // 如果没有提取到数据，使用默认值
+            if (!data.bio) {
+                data.bio = "专业技能扎实，具有丰富的项目经验。";
+            }
+            if (!data.skills) {
+                data.skills = "JavaScript, HTML, CSS";
+            }
+            if (!data.projects) {
+                data.projects = "- 项目一\n- 项目二";
+            }
+
+            return data;
+        }
+
+        async function readPdf(file) {
+            const buffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({data: buffer}).promise;
+            let t = '';
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                t += content.items.map(function(item) {
+                    return item.str;
+                }).join(' ') + '\n';
+            }
+            return t;
+        }
+
+        async function readDocx(file) {
+            const buffer = await file.arrayBuffer();
+            const res = await mammoth.extractRawText({arrayBuffer: buffer});
+            return res.value;
+        }
+
+        function generateSite() {
+            const name = inputs.name.value || 'Developer';
+            const title = inputs.title.value || 'Engineer';
+            const skills = inputs.skills.value.split(/[,，\n]/).filter(function(s) {
+                return s.trim();
+            });
+            const skillsHtml = skills.map(function(s) {
+                return '<span style="border:1px solid #00f3ff;color:#00f3ff;padding:4px 10px;margin:4px;display:inline-block;">' + s.trim() + '</span>';
+            }).join('');
+            
+            let html = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n';
+            html += '<title>' + name + '</title>\n';
+            html += '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">\n';
+            html += '<style>\n';
+            html += 'body { background:#050a15; color:#fff; font-family:sans-serif; padding:40px; line-height:1.6; }\n';
+            html += '.neon { color:#00f3ff; text-shadow:0 0 10px #00f3ff; }\n';
+            html += 'section { margin-bottom:40px; border-left:2px solid #00f3ff; padding-left:20px; }\n';
+            html += '</style>\n</head>\n<body>\n';
+            html += '<h1>HELLO, I AM <span class="neon">' + name + '</span></h1>\n';
+            html += '<p class="neon">> ' + title + '</p>\n';
+            html += '<section><h2>BIO</h2><p>' + inputs.bio.value + '</p></section>\n';
+            html += '<section><h2>SKILLS</h2><div>' + skillsHtml + '</div></section>\n';
+            html += '<section><h2>EXPERIENCE</h2><pre style="white-space:pre-wrap;font-family:inherit;">' + inputs.projects.value + '</pre></section>\n';
+            html += '</body>\n</html>';
+
+            finalHtmlCode = html;
+            document.getElementById('preview-frame').srcdoc = html;
+            switchView('preview');
+        }
+
+        function copyCode() {
+            const el = document.createElement('textarea');
+            el.value = finalHtmlCode;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            showToast('已复制');
+        }
+
+        function downloadFile() {
+            const blob = new Blob([finalHtmlCode], {type: 'text/html'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'portfolio.html';
+            a.click();
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            t.classList.remove('translate-x-full', 'opacity-0');
+            setTimeout(function() {
+                t.classList.add('translate-x-full', 'opacity-0');
+            }, 2000);
+        }
+
+        // 绑定按钮事件
+        const resetBtn = document.getElementById('reset-btn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', resetApp);
+        }
+
+        const generateBtn = document.getElementById('generate-btn');
+        if (generateBtn) {
+            generateBtn.addEventListener('click', generateSite);
+        }
+
+        const copyBtn = document.getElementById('copy-btn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', copyCode);
+        }
+
+        const downloadBtn = document.getElementById('download-btn');
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', downloadFile);
+        }
+
+        switchView('upload');
+    </script>
+</body>
+</html>
